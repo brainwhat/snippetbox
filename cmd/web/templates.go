@@ -10,10 +10,9 @@ import (
 
 type templateData struct {
 	CurrentYear int
-	// For view
-	Snippet *models.Snippet
-	// For latest 10
-	Snippets []*models.Snippet
+	Snippet     *models.Snippet
+	Snippets    []*models.Snippet
+	Form        any
 }
 
 func humanDate(t time.Time) string {
@@ -28,7 +27,7 @@ func newTemplateCache() (map[string]*template.Template, error) {
 	// map that matches strings to html templates
 	cache := map[string]*template.Template{}
 
-	pages, err := filepath.Glob("./ui/html/pages/*.html")
+	pages, err := filepath.Glob("./ui/html/pages/*.tmpl")
 	if err != nil {
 		return nil, err
 	}
@@ -37,14 +36,14 @@ func newTemplateCache() (map[string]*template.Template, error) {
 		// Base returns only filename
 		name := filepath.Base(page)
 
-		ts, err := template.New(name).Funcs(functions).ParseFiles("./ui/html/base.html")
+		ts, err := template.New(name).Funcs(functions).ParseFiles("./ui/html/base.tmpl")
 		if err != nil {
 			return nil, err
 		}
 
 		// Here ts is already a template set, so we call template methond ON IT
 		// ParseGlod ADDS files from partials
-		ts, err = ts.ParseGlob("./ui/html/partials/*.html")
+		ts, err = ts.ParseGlob("./ui/html/partials/*.tmpl")
 		if err != nil {
 			return nil, err
 		}
