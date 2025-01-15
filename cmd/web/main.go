@@ -43,6 +43,7 @@ func main() {
 		errorLog.Fatal(err)
 	}
 
+	// We create this struct to inject dependencies (make theme available globally)
 	app := &application{
 		infoLog:       infoLog,
 		errorLog:      errorLog,
