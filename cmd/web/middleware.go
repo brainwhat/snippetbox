@@ -20,6 +20,7 @@ func secureHeaders(next http.Handler) http.Handler {
 	})
 }
 
+// This func is application method and secureHeaders() isn't because we want to acces the logger
 func (app *application) logRequest(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		app.infoLog.Printf("%s - %s %s %s", r.RemoteAddr, r.Proto, r.Method, r.URL.RequestURI())
@@ -31,6 +32,8 @@ func (app *application) logRequest(next http.Handler) http.Handler {
 func (app *application) recoverPanic(next http.Handler) http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// When one of the connections panics, it unwidns the stack (for now just calls any deffered funcs)
+		// So we need to mark the connection as closed in the header
 		defer func() {
 			if err := recover(); err != nil {
 				w.Header().Set("Connection", "close")

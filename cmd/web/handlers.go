@@ -5,18 +5,19 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
-	"unicode/utf8"
 
 	"github.com/julienschmidt/httprouter"
 	"snippetbox.brainwhat/internal/models"
+	"snippetbox.brainwhat/internal/validator"
 )
 
 type snippetCreateForm struct {
-	Title       string
-	Content     string
-	Expires     int
-	FieldErrors map[string]string
+	Title   string
+	Content string
+	Expires int
+	//TODO: learn about Embedding struct into struct
+	// https://eli.thegreenplace.net/2020/embedding-in-go-part-1-structs-in-structs/
+	validator.Validator
 }
 
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
@@ -59,6 +60,8 @@ func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 
 func (app *application) snippetCreate(w http.ResponseWriter, r *http.Request) {
 	data := app.newTemplateData()
+	// We preset the Expires radio field so data isn't empty and
+	// {{ with .Form.FieldErrors.title }} in create.tmpl cause 500 err
 	data.Form = snippetCreateForm{
 		Expires: 365,
 	}
@@ -75,31 +78,21 @@ func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request
 	expires, err := strconv.Atoi(r.PostForm.Get("expires"))
 	if err != nil {
 		app.userError(w, http.StatusBadRequest)
+		return
 	}
 
 	form := snippetCreateForm{
-		Title:       r.PostForm.Get("title"),
-		Content:     r.PostForm.Get("content"),
-		Expires:     expires,
-		FieldErrors: map[string]string{},
+		Title:   r.PostForm.Get("title"),
+		Content: r.PostForm.Get("content"),
+		Expires: expires,
 	}
 
-	if strings.TrimSpace(form.Title) == "" {
-		form.FieldErrors["title"] = "This field cannot be blank"
-		// We use RuneCountInString (not len() or RuneLen()) to count only the amount of symbols
-	} else if utf8.RuneCountInString(form.Title) > 100 {
-		form.FieldErrors["title"] = "Title cannot be longer than 100 symbols"
-	}
+	form.CheckField(validator.NotBlank(form.Title), "title", "This field cannot be blank")
+	form.CheckField(validator.MaxChars(form.Title, 100), "title", "Title too long")
+	form.CheckField(validator.NotBlank(form.Content), "content", "This field cannot be blank")
+	form.CheckField(validator.PermittedInt(form.Expires, 1, 7, 365), "expires", "Stop playing with requests")
 
-	if strings.TrimSpace(form.Content) == "" {
-		form.FieldErrors["content"] = "This field cannot be blank"
-	}
-
-	if !(expires == 7 || expires == 1 || expires == 365) {
-		form.FieldErrors["expires"] = "Why you playing with requests?"
-	}
-
-	if len(form.FieldErrors) > 0 {
+	if !form.Valid() {
 		data := app.newTemplateData()
 		data.Form = form
 		app.render(w, http.StatusUnprocessableEntity, "create.tmpl", data)
@@ -109,6 +102,7 @@ func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request
 	id, err := app.snippets.Insert(form.Title, form.Content, form.Expires)
 	if err != nil {
 		app.serverError(w, err)
+		return
 	}
 
 	http.Redirect(w, r, fmt.Sprintf("/snippet/view/%d", id), http.StatusSeeOther)

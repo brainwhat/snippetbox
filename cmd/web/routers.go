@@ -10,12 +10,18 @@ import (
 func (app *application) routes() http.Handler {
 	router := httprouter.New()
 
+	// We change default NotFound func in httprouter to our global error
 	router.NotFound = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		app.notFound(w)
 	})
 
 	fileServer := http.FileServer(http.Dir("./ui/static/"))
-	router.Handler(http.MethodGet, "/static/*filepath", fileServer)
+	// let's say we request for /static/css/main.css
+	// There is no /static folder inside /ui/static
+	// So we need to strip this part
+	router.Handler(http.MethodGet, "/static/*filepath", http.StripPrefix("/static", fileServer))
+	// There is one problem with this. If i remove StripPrefix, there would be no error logged
+	// Only browser can tell that there is no files on this path
 
 	router.HandlerFunc(http.MethodGet, "/", app.home)
 	router.HandlerFunc(http.MethodGet, "/snippet/view/:id", app.snippetView)
@@ -37,14 +43,3 @@ func (app *application) routes() http.Handler {
 // 	// There is no /static folder inside /ui/static
 // 	// So we need to strip this part
 // 	mux.Handle("/static/", http.StripPrefix("/static", fileServer))
-
-// 	mux.HandleFunc("/", app.home)
-// 	mux.HandleFunc("/snippet/view", app.snippetView)
-// 	mux.HandleFunc("/snippet/create", app.snippetCreate)
-
-// 	// Alice is a simple middleware chainer
-// 	standard := alice.New(app.recoverPanic, app.logRequest, secureHeaders)
-
-// 	return standard.Then(mux)
-
-// }
