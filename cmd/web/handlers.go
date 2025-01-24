@@ -11,13 +11,12 @@ import (
 	"snippetbox.brainwhat/internal/validator"
 )
 
+// We include these tags to show the decoder how to map values from the form
 type snippetCreateForm struct {
-	Title   string
-	Content string
-	Expires int
-	//TODO: learn about Embedding struct into struct
-	// https://eli.thegreenplace.net/2020/embedding-in-go-part-1-structs-in-structs/
-	validator.Validator
+	Title               string     `form:"title"`
+	Content             string     `form:"content"`
+	Expires             int        `form:"expires"`
+	validator.Validator `form:"-"` // This one means innore the field
 }
 
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
@@ -69,24 +68,17 @@ func (app *application) snippetCreate(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request) {
-	err := r.ParseForm()
+	var form snippetCreateForm
+
+	err := app.decodePostForm(r, &form)
 	if err != nil {
 		app.userError(w, http.StatusBadRequest)
 		return
 	}
 
-	expires, err := strconv.Atoi(r.PostForm.Get("expires"))
-	if err != nil {
-		app.userError(w, http.StatusBadRequest)
-		return
-	}
-
-	form := snippetCreateForm{
-		Title:   r.PostForm.Get("title"),
-		Content: r.PostForm.Get("content"),
-		Expires: expires,
-	}
-
+	// One problem — this way a field can have only one message displayed at once
+	// Currently it's not a problem as we can't write to the same key twice
+	// But let's keep an eye on it
 	form.CheckField(validator.NotBlank(form.Title), "title", "This field cannot be blank")
 	form.CheckField(validator.MaxChars(form.Title, 100), "title", "Title too long")
 	form.CheckField(validator.NotBlank(form.Content), "content", "This field cannot be blank")

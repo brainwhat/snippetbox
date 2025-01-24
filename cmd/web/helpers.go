@@ -2,10 +2,13 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"net/http"
 	"runtime/debug"
 	"time"
+
+	"github.com/go-playground/form/v4"
 )
 
 func (app *application) render(w http.ResponseWriter, status int, page string, data *templateData) {
@@ -29,6 +32,26 @@ func (app *application) render(w http.ResponseWriter, status int, page string, d
 
 	buf.WriteTo(w)
 
+}
+
+// This func calls Decode() and panics if invalidDecoderError is returned
+func (app *application) decodePostForm(r *http.Request, dst any) error {
+	err := r.ParseForm()
+	if err != nil {
+		return err
+	}
+
+	// dst is destination for the form values
+	err = app.formDecoder.Decode(dst, r.PostForm)
+	if err != nil {
+		var invalidDecoderError *form.InvalidDecoderError
+		// Yeah we just panic
+		if errors.As(err, &invalidDecoderError) {
+			panic(err)
+		}
+		return err
+	}
+	return nil
 }
 
 // We use this func to remove some boilerplate code
