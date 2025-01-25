@@ -23,23 +23,15 @@ func (app *application) routes() http.Handler {
 	// There is one problem with this. If i remove StripPrefix, there would be no error logged
 	// Only browser can tell that there is no files on this path
 
-	router.HandlerFunc(http.MethodGet, "/", app.home)
-	router.HandlerFunc(http.MethodGet, "/snippet/view/:id", app.snippetView)
-	router.HandlerFunc(http.MethodGet, "/snippet/create", app.snippetCreate)
-	router.HandlerFunc(http.MethodPost, "/snippet/create", app.snippetCreatePost)
+	// We create dymanic middleware which doesn't involve static files
+	dymanic := alice.New(app.sessionManager.LoadAndSave)
+
+	router.Handler(http.MethodGet, "/", dymanic.ThenFunc(app.home))
+	router.Handler(http.MethodGet, "/snippet/view/:id", dymanic.ThenFunc(app.snippetView))
+	router.Handler(http.MethodGet, "/snippet/create", dymanic.ThenFunc(app.snippetCreate))
+	router.Handler(http.MethodPost, "/snippet/create", dymanic.ThenFunc(app.snippetCreatePost))
 
 	standard := alice.New(app.recoverPanic, app.logRequest, secureHeaders)
 
 	return standard.Then(router)
 }
-
-// That's a stdlib implementation
-// func (app *application) routes() http.Handler {
-// 	mux := http.NewServeMux()
-
-// 	// Here we bind our FileServer to the /static folder
-// 	fileServer := http.FileServer(http.Dir("./ui/static/"))
-// 	// So here let's say we request for /static/css/main.css
-// 	// There is no /static folder inside /ui/static
-// 	// So we need to strip this part
-// 	mux.Handle("/static/", http.StripPrefix("/static", fileServer))
