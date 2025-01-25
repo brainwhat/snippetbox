@@ -54,6 +54,8 @@ func main() {
 	sessionManager := scs.New()
 	sessionManager.Store = mysqlstore.New(db)
 	sessionManager.Lifetime = 12 * time.Hour
+	// Cookie will only be sent over HTTPS
+	sessionManager.Cookie.Secure = true
 
 	// We create this struct to inject dependencies (make theme available globally)
 	app := &application{
@@ -72,7 +74,8 @@ func main() {
 	}
 
 	infoLog.Printf("Starting server on %s", *addr)
-	err = srv.ListenAndServe()
+	// Starting HTTPS server with keys generated with generate_cert.go
+	err = srv.ListenAndServeTLS("tls/cert.pem", "tls/key.pem")
 	errorLog.Fatal(err)
 }
 
