@@ -26,7 +26,7 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := app.newTemplateData()
+	data := app.newTemplateData(*r)
 	data.Snippets = snippets
 
 	app.render(w, http.StatusOK, "home.tmpl", data)
@@ -51,18 +51,14 @@ func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// PopString returns data and removes it from the session
-	flash := app.sessionManager.PopString(r.Context(), "flash")
-
-	data := app.newTemplateData()
+	data := app.newTemplateData(*r)
 	data.Snippet = snippet
-	data.Flash = flash
 
 	app.render(w, http.StatusOK, "view.tmpl", data)
 }
 
 func (app *application) snippetCreate(w http.ResponseWriter, r *http.Request) {
-	data := app.newTemplateData()
+	data := app.newTemplateData(*r)
 	// We preset the Expires radio field so data isn't empty and
 	// {{ with .Form.FieldErrors.title }} in create.tmpl cause 500 err
 	data.Form = snippetCreateForm{
@@ -89,7 +85,7 @@ func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request
 	form.CheckField(validator.PermittedInt(form.Expires, 1, 7, 365), "expires", "Stop playing with requests")
 
 	if !form.Valid() {
-		data := app.newTemplateData()
+		data := app.newTemplateData(*r)
 		data.Form = form
 		app.render(w, http.StatusUnprocessableEntity, "create.tmpl", data)
 		return
