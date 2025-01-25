@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"database/sql"
 	"flag"
 	"html/template"
@@ -67,10 +68,20 @@ func main() {
 		sessionManager: sessionManager,
 	}
 
+	// We restrict ellupric curves choices to ensure performance
+	tlsConfig := &tls.Config{
+		CurvePreferences: []tls.CurveID{tls.X25519, tls.CurveP256},
+	}
 	srv := &http.Server{
-		Addr:     *addr,
-		ErrorLog: errorLog,
-		Handler:  app.routes(),
+		Addr:      *addr,
+		ErrorLog:  errorLog,
+		Handler:   app.routes(),
+		TLSConfig: tlsConfig,
+		// Learn about keepalives
+		IdleTimeout: time.Minute,
+		// This protects from slowloris attacks
+		ReadTimeout:  time.Second * 5,
+		WriteTimeout: time.Second * 10,
 	}
 
 	infoLog.Printf("Starting server on %s", *addr)
