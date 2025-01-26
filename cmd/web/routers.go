@@ -31,6 +31,12 @@ func (app *application) routes() http.Handler {
 	router.Handler(http.MethodGet, "/snippet/create", dymanic.ThenFunc(app.snippetCreate))
 	router.Handler(http.MethodPost, "/snippet/create", dymanic.ThenFunc(app.snippetCreatePost))
 
+	router.Handler(http.MethodGet, "/user/signup", dymanic.ThenFunc(app.userSignUp))
+	router.Handler(http.MethodPost, "/user/signup", dymanic.ThenFunc(app.userSignUpPost))
+	router.Handler(http.MethodGet, "/user/signin", dymanic.ThenFunc(app.userSignIn))
+	router.Handler(http.MethodPost, "/user/signin", dymanic.ThenFunc(app.userSignInPost))
+	router.Handler(http.MethodPost, "/user/logout", dymanic.ThenFunc(app.userLogOutPost))
+
 	standard := alice.New(app.recoverPanic, app.logRequest, secureHeaders)
 
 	return standard.Then(router)

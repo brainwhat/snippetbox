@@ -101,3 +101,68 @@ func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request
 
 	http.Redirect(w, r, fmt.Sprintf("/snippet/view/%d", id), http.StatusSeeOther)
 }
+
+type userSignUpForm struct {
+	Name                string `form:"name"`
+	Email               string `form:"email"`
+	Password            string `form:"password"`
+	validator.Validator `form:"-"`
+}
+
+func (app *application) userSignUp(w http.ResponseWriter, r *http.Request) {
+	data := app.newTemplateData(*r)
+	data.Form = userSignUpForm{}
+	app.render(w, http.StatusOK, "signup.tmpl", data)
+}
+
+func (app *application) userSignUpPost(w http.ResponseWriter, r *http.Request) {
+	var form userSignUpForm
+
+	err := app.decodePostForm(r, &form)
+	if err != nil {
+		app.userError(w, http.StatusBadRequest)
+		return
+	}
+
+	form.CheckField(validator.NotBlank(form.Name), "name", "This field cannot be blank")
+	form.CheckField(validator.NotBlank(form.Email), "email", "This field cannot be blank")
+	form.CheckField(validator.NotBlank(form.Password), "password", "This field cannot be blank")
+	form.CheckField(validator.MatchesRX(form.Email, validator.EmailRX), "email", "Invalid email")
+	form.CheckField(validator.MinChars(form.Name, 3), "name", "Name too short")
+	form.CheckField(validator.MinChars(form.Password, 8), "password", "Password too short")
+
+	if !form.Valid() {
+		data := app.newTemplateData(*r)
+		data.Form = form
+		app.render(w, http.StatusUnprocessableEntity, "signup.tmpl", data)
+		return
+	}
+
+	err = app.users.Create(form.Email, form.Name, form.Password)
+	if err != nil {
+		if errors.Is(err, models.ErrDuplicateEmail) {
+			form.AddFieldErrors("email", "Email already in use")
+
+			data := app.newTemplateData(*r)
+			data.Form = form
+			app.render(w, http.StatusUnprocessableEntity, "signup.tmpl", data)
+		} else {
+			app.serverError(w, err)
+		}
+		return
+	}
+
+	app.sessionManager.Put(r.Context(), "flash", "New user created")
+
+	http.Redirect(w, r, "/user/signin", http.StatusSeeOther)
+}
+
+func (app *application) userSignIn(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintln(w, "Show html for sign in")
+}
+func (app *application) userSignInPost(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintln(w, "Sign in a user")
+}
+func (app *application) userLogOutPost(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintln(w, "Log out a user")
+}

@@ -1,6 +1,15 @@
-{{define "nav"}}
-<nav>
-    <a href="/">Home</a>
-    <a href="/snippet/create">Create snippet</a>
-</nav>
-{{end}}
+{{ define "nav" }}
+  <nav>
+    <div>
+      <a href="/">Home</a>
+      <a href="/snippet/create">Create snippet</a>
+    </div>
+    <div>
+      <a href="/user/signup">Sign up</a>
+      <a href="/user/signin">Sign in</a>
+      <form action="/user/logout" method="post">
+        <button>Log out</button>
+      </form>
+    </div>
+  </nav>
+{{ end }}
