@@ -157,11 +157,60 @@ func (app *application) userSignUpPost(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/user/signin", http.StatusSeeOther)
 }
 
+type UserSignInForm struct {
+	Email               string `form:"email"`
+	Password            string `form:"password"`
+	validator.Validator `form:"-"`
+}
+
 func (app *application) userSignIn(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, "Show html for sign in")
+	data := app.newTemplateData(*r)
+	data.Form = UserSignInForm{}
+	app.render(w, http.StatusOK, "signin.tmpl", data)
 }
 func (app *application) userSignInPost(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, "Sign in a user")
+	var form UserSignInForm
+
+	err := app.decodePostForm(r, &form)
+	if err != nil {
+		app.userError(w, http.StatusBadRequest)
+		return
+	}
+
+	form.CheckField(validator.NotBlank(form.Email), "email", "This field cannot be blank")
+	form.CheckField(validator.MatchesRX(form.Email, validator.EmailRX), "email", "Invalid email")
+	form.CheckField(validator.NotBlank(form.Password), "password", "This field cannot be blank")
+
+	if !form.Valid() {
+		data := app.newTemplateData(*r)
+		data.Form = form
+		app.render(w, http.StatusUnprocessableEntity, "signin.tmpl", data)
+		return
+	}
+
+	id, err := app.users.Authenticate(form.Email, form.Password)
+	if err != nil {
+		if errors.Is(err, models.ErrInvalidCredentials) {
+			form.AddNonFieldError("Email or password is incorrect")
+
+			data := app.newTemplateData(*r)
+			data.Form = form
+			app.render(w, http.StatusUnprocessableEntity, "signin.tmpl", data)
+		} else {
+			app.serverError(w, err)
+		}
+		return
+	}
+
+	err = app.sessionManager.RenewToken(r.Context())
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	app.sessionManager.Put(r.Context(), "authenticatedUserID", id)
+
+	http.Redirect(w, r, "/snippet/create", http.StatusSeeOther)
 }
 func (app *application) userLogOutPost(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "Log out a user")

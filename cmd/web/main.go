@@ -70,7 +70,7 @@ func main() {
 		sessionManager: sessionManager,
 	}
 
-	// We restrict ellipric curves choices to ensure performance
+	// We restrict elliptic curves choices to ensure performance
 	tlsConfig := &tls.Config{
 		CurvePreferences: []tls.CurveID{tls.X25519, tls.CurveP256},
 	}
