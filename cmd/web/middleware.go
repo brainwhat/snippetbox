@@ -44,3 +44,20 @@ func (app *application) recoverPanic(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
+
+func (app *application) requireAuthentication(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// If user is not authenticated, redirect to signin page
+		// And return so no otherr middlewares are ran
+		if !app.isAuthenticated(r) {
+			http.Redirect(w, r, "/user/signin", http.StatusSeeOther)
+			return
+		}
+
+		// This header means that pages requiring authentication
+		// Are not stored in the browser cachep
+		w.Header().Add("Cache-Control", "no-store")
+
+		next.ServeHTTP(w, r)
+	})
+}

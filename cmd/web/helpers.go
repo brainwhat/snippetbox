@@ -31,7 +31,6 @@ func (app *application) render(w http.ResponseWriter, status int, page string, d
 	w.WriteHeader(status)
 
 	buf.WriteTo(w)
-
 }
 
 // This func calls Decode() and panics if invalidDecoderError is returned
@@ -55,12 +54,17 @@ func (app *application) decodePostForm(r *http.Request, dst any) error {
 }
 
 // We use this func to remove some boilerplate code
-// As we always want to display current year in every template
-func (app *application) newTemplateData(r http.Request) *templateData {
+// Adds current year and flash message if any
+func (app *application) newTemplateData(r *http.Request) *templateData {
 	return &templateData{
-		CurrentYear: time.Now().Year(),
-		Flash:       app.sessionManager.PopString(r.Context(), "flash"),
+		CurrentYear:     time.Now().Year(),
+		Flash:           app.sessionManager.PopString(r.Context(), "flash"),
+		IsAuthenticated: app.isAuthenticated(r),
 	}
+}
+
+func (app *application) isAuthenticated(r *http.Request) bool {
+	return app.sessionManager.Exists(r.Context(), "authenticatedUserID")
 }
 
 func (app *application) serverError(w http.ResponseWriter, err error) {

@@ -26,7 +26,7 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := app.newTemplateData(*r)
+	data := app.newTemplateData(r)
 	data.Snippets = snippets
 
 	app.render(w, http.StatusOK, "home.tmpl", data)
@@ -51,19 +51,20 @@ func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := app.newTemplateData(*r)
+	data := app.newTemplateData(r)
 	data.Snippet = snippet
 
 	app.render(w, http.StatusOK, "view.tmpl", data)
 }
 
 func (app *application) snippetCreate(w http.ResponseWriter, r *http.Request) {
-	data := app.newTemplateData(*r)
+	data := app.newTemplateData(r)
 	// We preset the Expires radio field so data isn't empty and
 	// {{ with .Form.FieldErrors.title }} in create.tmpl cause 500 err
 	data.Form = snippetCreateForm{
 		Expires: 365,
 	}
+
 	app.render(w, http.StatusOK, "create.tmpl", data)
 }
 
@@ -85,7 +86,7 @@ func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request
 	form.CheckField(validator.PermittedInt(form.Expires, 1, 7, 365), "expires", "Stop playing with requests")
 
 	if !form.Valid() {
-		data := app.newTemplateData(*r)
+		data := app.newTemplateData(r)
 		data.Form = form
 		app.render(w, http.StatusUnprocessableEntity, "create.tmpl", data)
 		return
@@ -110,7 +111,7 @@ type userSignUpForm struct {
 }
 
 func (app *application) userSignUp(w http.ResponseWriter, r *http.Request) {
-	data := app.newTemplateData(*r)
+	data := app.newTemplateData(r)
 	data.Form = userSignUpForm{}
 	app.render(w, http.StatusOK, "signup.tmpl", data)
 }
@@ -132,7 +133,7 @@ func (app *application) userSignUpPost(w http.ResponseWriter, r *http.Request) {
 	form.CheckField(validator.MinChars(form.Password, 8), "password", "Password too short")
 
 	if !form.Valid() {
-		data := app.newTemplateData(*r)
+		data := app.newTemplateData(r)
 		data.Form = form
 		app.render(w, http.StatusUnprocessableEntity, "signup.tmpl", data)
 		return
@@ -143,7 +144,7 @@ func (app *application) userSignUpPost(w http.ResponseWriter, r *http.Request) {
 		if errors.Is(err, models.ErrDuplicateEmail) {
 			form.AddFieldErrors("email", "Email already in use")
 
-			data := app.newTemplateData(*r)
+			data := app.newTemplateData(r)
 			data.Form = form
 			app.render(w, http.StatusUnprocessableEntity, "signup.tmpl", data)
 		} else {
@@ -164,7 +165,7 @@ type UserSignInForm struct {
 }
 
 func (app *application) userSignIn(w http.ResponseWriter, r *http.Request) {
-	data := app.newTemplateData(*r)
+	data := app.newTemplateData(r)
 	data.Form = UserSignInForm{}
 	app.render(w, http.StatusOK, "signin.tmpl", data)
 }
@@ -182,7 +183,7 @@ func (app *application) userSignInPost(w http.ResponseWriter, r *http.Request) {
 	form.CheckField(validator.NotBlank(form.Password), "password", "This field cannot be blank")
 
 	if !form.Valid() {
-		data := app.newTemplateData(*r)
+		data := app.newTemplateData(r)
 		data.Form = form
 		app.render(w, http.StatusUnprocessableEntity, "signin.tmpl", data)
 		return
@@ -193,7 +194,7 @@ func (app *application) userSignInPost(w http.ResponseWriter, r *http.Request) {
 		if errors.Is(err, models.ErrInvalidCredentials) {
 			form.AddNonFieldError("Email or password is incorrect")
 
-			data := app.newTemplateData(*r)
+			data := app.newTemplateData(r)
 			data.Form = form
 			app.render(w, http.StatusUnprocessableEntity, "signin.tmpl", data)
 		} else {
@@ -212,6 +213,19 @@ func (app *application) userSignInPost(w http.ResponseWriter, r *http.Request) {
 
 	http.Redirect(w, r, "/snippet/create", http.StatusSeeOther)
 }
+
 func (app *application) userLogOutPost(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, "Log out a user")
+	err := app.sessionManager.RenewToken(r.Context())
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	value := app.sessionManager.Get(r.Context(), "authenticatedUserID")
+	app.errorLog.Printf("Logged out user id: %#v", value)
+
+	app.sessionManager.Remove(r.Context(), "authenticatedUserID")
+	app.sessionManager.Put(r.Context(), "flash", "User logged out succesfully")
+
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }

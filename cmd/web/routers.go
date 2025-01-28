@@ -26,16 +26,19 @@ func (app *application) routes() http.Handler {
 	// We create dymanic middleware which doesn't involve static files
 	dymanic := alice.New(app.sessionManager.LoadAndSave)
 
+	// Unprotected routes
 	router.Handler(http.MethodGet, "/", dymanic.ThenFunc(app.home))
 	router.Handler(http.MethodGet, "/snippet/view/:id", dymanic.ThenFunc(app.snippetView))
-	router.Handler(http.MethodGet, "/snippet/create", dymanic.ThenFunc(app.snippetCreate))
-	router.Handler(http.MethodPost, "/snippet/create", dymanic.ThenFunc(app.snippetCreatePost))
-
 	router.Handler(http.MethodGet, "/user/signup", dymanic.ThenFunc(app.userSignUp))
 	router.Handler(http.MethodPost, "/user/signup", dymanic.ThenFunc(app.userSignUpPost))
 	router.Handler(http.MethodGet, "/user/signin", dymanic.ThenFunc(app.userSignIn))
 	router.Handler(http.MethodPost, "/user/signin", dymanic.ThenFunc(app.userSignInPost))
-	router.Handler(http.MethodPost, "/user/logout", dymanic.ThenFunc(app.userLogOutPost))
+
+	protected := alice.New(app.sessionManager.LoadAndSave, app.requireAuthentication)
+	// Protected routes
+	router.Handler(http.MethodPost, "/user/logout", protected.ThenFunc(app.userLogOutPost))
+	router.Handler(http.MethodGet, "/snippet/create", protected.ThenFunc(app.snippetCreate))
+	router.Handler(http.MethodPost, "/snippet/create", protected.ThenFunc(app.snippetCreatePost))
 
 	standard := alice.New(app.recoverPanic, app.logRequest, secureHeaders)
 
