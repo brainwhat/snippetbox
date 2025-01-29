@@ -83,7 +83,7 @@ func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request
 	form.CheckField(validator.NotBlank(form.Title), "title", "This field cannot be blank")
 	form.CheckField(validator.MaxChars(form.Title, 100), "title", "Title too long")
 	form.CheckField(validator.NotBlank(form.Content), "content", "This field cannot be blank")
-	form.CheckField(validator.PermittedInt(form.Expires, 1, 7, 365), "expires", "Stop playing with requests")
+	form.CheckField(validator.PermittedValue(form.Expires, 1, 7, 365), "expires", "Stop playing with requests")
 
 	if !form.Valid() {
 		data := app.newTemplateData(r)
