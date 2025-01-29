@@ -216,13 +216,11 @@ func (app *application) userSignInPost(w http.ResponseWriter, r *http.Request) {
 
 func (app *application) userLogOutPost(w http.ResponseWriter, r *http.Request) {
 	err := app.sessionManager.RenewToken(r.Context())
+
 	if err != nil {
 		app.serverError(w, err)
 		return
 	}
-
-	value := app.sessionManager.Get(r.Context(), "authenticatedUserID")
-	app.errorLog.Printf("Logged out user id: %#v", value)
 
 	app.sessionManager.Remove(r.Context(), "authenticatedUserID")
 	app.sessionManager.Put(r.Context(), "flash", "User logged out succesfully")

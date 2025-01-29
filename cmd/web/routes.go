@@ -5,6 +5,7 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/justinas/alice"
+	"snippetbox.brainwhat/ui"
 )
 
 func (app *application) routes() http.Handler {
@@ -15,16 +16,11 @@ func (app *application) routes() http.Handler {
 		app.notFound(w)
 	})
 
-	fileServer := http.FileServer(http.Dir("./ui/static/"))
-	// let's say we request for /static/css/main.css
-	// There is no /static folder inside /ui/static
-	// So we need to strip this part
-	router.Handler(http.MethodGet, "/static/*filepath", http.StripPrefix("/static", fileServer))
-	// There is one problem with this. If i remove StripPrefix, there would be no error logged
-	// Only browser can tell that there is no files on this path
+	fileServer := http.FileServer(http.FS(ui.Files))
+	router.Handler(http.MethodGet, "/static/*filepath", fileServer)
 
 	// We create dymanic middleware which doesn't involve static files
-	dymanic := alice.New(app.sessionManager.LoadAndSave)
+	dymanic := alice.New(app.sessionManager.LoadAndSave, noSurf, app.authenticate)
 
 	// Unprotected routes
 	router.Handler(http.MethodGet, "/", dymanic.ThenFunc(app.home))
@@ -34,7 +30,7 @@ func (app *application) routes() http.Handler {
 	router.Handler(http.MethodGet, "/user/signin", dymanic.ThenFunc(app.userSignIn))
 	router.Handler(http.MethodPost, "/user/signin", dymanic.ThenFunc(app.userSignInPost))
 
-	protected := alice.New(app.sessionManager.LoadAndSave, app.requireAuthentication)
+	protected := dymanic.Append(app.requireAuthentication)
 	// Protected routes
 	router.Handler(http.MethodPost, "/user/logout", protected.ThenFunc(app.userLogOutPost))
 	router.Handler(http.MethodGet, "/snippet/create", protected.ThenFunc(app.snippetCreate))

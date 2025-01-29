@@ -1,8 +1,11 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
+
+	"github.com/justinas/nosurf"
 )
 
 // This middleware adds some of the headers proposed by OWASP to every response
@@ -50,6 +53,7 @@ func (app *application) requireAuthentication(next http.Handler) http.Handler {
 		// If user is not authenticated, redirect to signin page
 		// And return so no otherr middlewares are ran
 		if !app.isAuthenticated(r) {
+			app.sessionManager.Put(r.Context(), "flash", "Please login first")
 			http.Redirect(w, r, "/user/signin", http.StatusSeeOther)
 			return
 		}
@@ -60,4 +64,44 @@ func (app *application) requireAuthentication(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+// This middleware is used to prevent CSRF attacks
+func noSurf(next http.Handler) http.Handler {
+	csrfHandler := nosurf.New(next)
+	csrfHandler.SetBaseCookie(http.Cookie{
+		HttpOnly: true,
+		Path:     "/",
+		Secure:   true,
+	})
+	return csrfHandler
+}
+
+func (app *application) authenticate(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// We check if there is authenticatedUserID in the session
+		// If not, just call the next handler
+		id := app.sessionManager.GetInt(r.Context(), "authenticatedUserID")
+		if id == 0 {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// If there is, check if the user exists
+		exists, err := app.users.Exists(id)
+		if err != nil {
+			app.serverError(w, err)
+			return
+		}
+		// If he does, create a copy of request
+		// with "isAuthenticatedContextKey" value of true
+		// and reassign it to the request
+		if exists {
+			ctx := context.WithValue(r.Context(), isAuthenticatedContextKey, true)
+			r = r.WithContext(ctx)
+		}
+
+		next.ServeHTTP(w, r)
+	})
+
 }
