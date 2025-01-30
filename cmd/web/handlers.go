@@ -19,6 +19,11 @@ type snippetCreateForm struct {
 	validator.Validator `form:"-"` // This one means innore the field
 }
 
+// Small func for testing
+func ping(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("OK"))
+}
+
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
 	snippets, err := app.snippets.Latest()
 	if err != nil {
