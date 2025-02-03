@@ -8,14 +8,43 @@ import (
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"testing"
+	"time"
+
+	"github.com/alexedwards/scs/v2"
+	"github.com/go-playground/form/v4"
+	"snippetbox.brainwhat/internal/models/mocks"
 )
 
 func NewTestApp(t *testing.T) *application {
-	// Mock loggers that discard everything given to them
-	// logRequest and recoverPanic middlewares use them
+	// The same as with the app
+	templateCache, err := newTemplateCache()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Also the same
+	formDecoder := form.NewDecoder()
+
+	// We don't set .Store as there is no DB
+	// Also default setting is using "transient in-memory store"
+	// Which is perfect for testing
+	sessionManager := scs.New()
+	sessionManager.Lifetime = 12 * time.Hour
+	sessionManager.Cookie.Secure = true
+
 	return &application{
+		// Mock loggers that discard everything given to them
+		// logRequest and recoverPanic middlewares use them
 		infoLog:  log.New(io.Discard, "", 0),
 		errorLog: log.New(io.Discard, "", 0),
+
+		// Created mocks using interfaces so there's no need to spin up a DB instance
+		snippets: &mocks.MockSnippetModel{},
+		users:    &mocks.MockUserModel{},
+
+		// This is the same as with normal app
+		templateCache:  templateCache,
+		formDecoder:    formDecoder,
+		sessionManager: sessionManager,
 	}
 }
 
@@ -47,7 +76,7 @@ func NewTestServer(t *testing.T, h http.Handler) *testServer {
 // Make a GET req to url using test server client
 // Return response status code, headers and body.
 func (ts *testServer) get(t *testing.T, urlPath string) (int, http.Header, string) {
-	// Get resp after calling /pin url
+	// Get resp after calling url
 	rs, err := ts.Client().Get(ts.URL + urlPath)
 	if err != nil {
 		t.Fatal(err)
