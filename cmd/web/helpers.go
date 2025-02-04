@@ -79,7 +79,7 @@ func (app *application) serverError(w http.ResponseWriter, err error) {
 	app.errorLog.Output(2, trace)
 
 	if app.debugMode {
-		w.Write([]byte(trace))
+		http.Error(w, trace, http.StatusInternalServerError)
 		return
 	}
 
