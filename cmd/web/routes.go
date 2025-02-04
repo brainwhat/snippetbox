@@ -26,6 +26,7 @@ func (app *application) routes() http.Handler {
 
 	// Unprotected routes
 	router.Handler(http.MethodGet, "/", dymanic.ThenFunc(app.home))
+	router.Handler(http.MethodGet, "/about", dymanic.ThenFunc(app.about))
 	router.Handler(http.MethodGet, "/snippet/view/:id", dymanic.ThenFunc(app.snippetView))
 	router.Handler(http.MethodGet, "/user/signup", dymanic.ThenFunc(app.userSignUp))
 	router.Handler(http.MethodPost, "/user/signup", dymanic.ThenFunc(app.userSignUpPost))
