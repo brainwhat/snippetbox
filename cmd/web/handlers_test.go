@@ -79,6 +79,41 @@ func TestSnippetView(t *testing.T) {
 	}
 }
 
+// We are checking whether we can open /snippet/create page as auth and non-auth user
+func TestSnippetCreate(t *testing.T) {
+	app := NewTestApp(t)
+	ts := NewTestServer(t, app.routes())
+	defer ts.Close()
+
+	// Check to see if Unauthorized reqs are redirected to signin page
+	t.Run("Unauthorized", func(t *testing.T) {
+		code, header, _ := ts.get(t, "/snippet/create")
+
+		assert.Equal(t, code, http.StatusSeeOther)
+		assert.Equal(t, header.Get("Location"), "/user/signin")
+	})
+
+	// GET signin, extract CSRF token, POST valid signin, open snippte/crete
+	t.Run("Authorized", func(t *testing.T) {
+		_, _, body := ts.get(t, "/user/signin")
+		validCSRFToken := extactCSRFToken(t, body)
+
+		form := url.Values{}
+		// The credentials are from internal/models/mocks/users.go
+		form.Add("email", "example@mail.com")
+		form.Add("password", "pa$$word")
+		form.Add("csrf_token", validCSRFToken)
+
+		ts.postForm(t, "/user/signin", form)
+
+		code, _, body := ts.get(t, "/snippet/create")
+
+		assert.Equal(t, code, http.StatusOK)
+		assert.StringContains(t, body, "snippet/create")
+	})
+
+}
+
 func TestUserSignUp(t *testing.T) {
 	app := NewTestApp(t)
 	ts := NewTestServer(t, app.routes())

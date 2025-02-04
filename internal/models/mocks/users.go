@@ -16,7 +16,7 @@ func (m *MockUserModel) Create(email, name, password string) error {
 }
 
 func (m *MockUserModel) Authenticate(email, password string) (int, error) {
-	if email == "example@mail.com" && password == "pass" {
+	if email == "example@mail.com" && password == "pa$$word" {
 		return 1, nil
 	}
 

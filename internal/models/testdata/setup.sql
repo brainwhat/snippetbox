@@ -23,7 +23,7 @@ INSERT INTO
 VALUES
     (
         'Ivan Ivanov',
-        'john@doe.com',
+        'example@mail.com',
         '$2a$12$NuTjWXm3KKntReFwyBVHyuf/to.HEwTy.eS206TNfkGfr6HzGJSWG',
         '2020-01-01 10:00:00'
     );
