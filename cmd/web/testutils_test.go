@@ -2,11 +2,14 @@ package main
 
 import (
 	"bytes"
+	"html"
 	"io"
 	"log"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
+	"net/url"
+	"regexp"
 	"testing"
 	"time"
 
@@ -24,7 +27,7 @@ func NewTestApp(t *testing.T) *application {
 	// Also the same
 	formDecoder := form.NewDecoder()
 
-	// We don't set .Store as there is no DB
+	// We don"t set .Store as there is no DB
 	// Also default setting is using "transient in-memory store"
 	// Which is perfect for testing
 	sessionManager := scs.New()
@@ -37,7 +40,7 @@ func NewTestApp(t *testing.T) *application {
 		infoLog:  log.New(io.Discard, "", 0),
 		errorLog: log.New(io.Discard, "", 0),
 
-		// Created mocks using interfaces so there's no need to spin up a DB instance
+		// Created mocks using interfaces so there"s no need to spin up a DB instance
 		snippets: &mocks.MockSnippetModel{},
 		users:    &mocks.MockUserModel{},
 
@@ -65,7 +68,7 @@ func NewTestServer(t *testing.T, h http.Handler) *testServer {
 
 	ts.Client().Jar = jar
 
-	// We don't want to follow redirects but return the first response sent by the server
+	// We don"t want to follow redirects but return the first response sent by the server
 	ts.Client().CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		return http.ErrUseLastResponse
 	}
@@ -91,4 +94,36 @@ func (ts *testServer) get(t *testing.T, urlPath string) (int, http.Header, strin
 	bytes.TrimSpace(body)
 
 	return rs.StatusCode, rs.Header, string(body)
+}
+
+// Code is identical to get(), we just call Client().PostForm() instead of Get()
+func (ts *testServer) postForm(t *testing.T, urlPath string, form url.Values) (int, http.Header, string) {
+	rs, err := ts.Client().PostForm(ts.URL+urlPath, form)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer rs.Body.Close()
+	body, err := io.ReadAll(rs.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bytes.TrimSpace(body)
+
+	return rs.StatusCode, rs.Header, string(body)
+}
+
+// Я не хочу учить regexp
+var csrfTokenRx = regexp.MustCompile(`<input\s+type="hidden"\s+name="csrf_token"\s+value="([^"]+)"`)
+
+func extactCSRFToken(t *testing.T, body string) string {
+	matches := csrfTokenRx.FindStringSubmatch(body)
+	if len(matches) < 2 {
+		t.Fatal("no CSRF tokens found in body")
+	}
+
+	// html/template escapes(encodes) some characters
+	// like `+` will be returned as `&#43;`
+	// We use UnescapeString to get original string
+	return html.UnescapeString(string(matches[1]))
 }
