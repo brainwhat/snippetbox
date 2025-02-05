@@ -10,15 +10,10 @@ import (
 )
 
 const (
-	// the name of CSRF cookie
-	CookieName = "csrf_token"
-	// the name of the form field
+	CookieName    = "csrf_token"
 	FormFieldName = "csrf_token"
-	// the name of CSRF header
-	HeaderName = "X-CSRF-Token"
-	// the HTTP status code for the default failure handler
-	FailureCode = 400
-
+	HeaderName    = "X-CSRF-Token"
+	FailureCode   = 400
 	// Max-Age in seconds for the default base cookie. 365 days.
 	MaxAge = 365 * 24 * 60 * 60
 )

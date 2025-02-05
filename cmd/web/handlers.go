@@ -25,6 +25,7 @@ func ping(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
+
 	snippets, err := app.snippets.Latest()
 	if err != nil {
 		app.serverError(w, err)
@@ -87,17 +88,15 @@ func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// One problem — this way a field can have only one message displayed at once
-	// Currently it's not a problem as we can't write to the same key twice
-	// But let's keep an eye on it
 	form.CheckField(validator.NotBlank(form.Title), "title", "This field cannot be blank")
-	form.CheckField(validator.MaxChars(form.Title, 100), "title", "Title too long")
+	form.CheckField(validator.MaxChars(form.Title, 100), "title", "This field cannot be more than 100 characters long")
 	form.CheckField(validator.NotBlank(form.Content), "content", "This field cannot be blank")
-	form.CheckField(validator.PermittedValue(form.Expires, 1, 7, 365), "expires", "Stop playing with requests")
+	form.CheckField(validator.PermittedValue(form.Expires, 1, 7, 365), "expires", "This field must equal 1, 7 or 365")
 
 	if !form.Valid() {
 		data := app.newTemplateData(r)
 		data.Form = form
+
 		app.render(w, http.StatusUnprocessableEntity, "create.tmpl", data)
 		return
 	}
@@ -108,7 +107,7 @@ func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	app.sessionManager.Put(r.Context(), "flash", "Snippet created sucessfully")
+	app.sessionManager.Put(r.Context(), "flash", "Snippet successfully created!")
 
 	http.Redirect(w, r, fmt.Sprintf("/snippet/view/%d", id), http.StatusSeeOther)
 }
@@ -152,7 +151,7 @@ func (app *application) userSignUpPost(w http.ResponseWriter, r *http.Request) {
 	err = app.users.Create(form.Email, form.Name, form.Password)
 	if err != nil {
 		if errors.Is(err, models.ErrDuplicateEmail) {
-			form.AddFieldErrors("email", "Email already in use")
+			form.AddFieldErrors("email", "Email address is already in use")
 
 			data := app.newTemplateData(r)
 			data.Form = form
@@ -222,20 +221,21 @@ func (app *application) userSignInPost(w http.ResponseWriter, r *http.Request) {
 
 	app.sessionManager.Put(r.Context(), "authenticatedUserID", id)
 
+	url := app.sessionManager.PopString(r.Context(), "requestedURL")
+	if url != "" {
+		http.Redirect(w, r, url, http.StatusSeeOther)
+	}
 	http.Redirect(w, r, "/snippet/create", http.StatusSeeOther)
 }
 
 func (app *application) userLogOutPost(w http.ResponseWriter, r *http.Request) {
 	err := app.sessionManager.RenewToken(r.Context())
-
 	if err != nil {
 		app.serverError(w, err)
 		return
 	}
-
 	app.sessionManager.Remove(r.Context(), "authenticatedUserID")
-	app.sessionManager.Put(r.Context(), "flash", "User logged out succesfully")
-
+	app.sessionManager.Put(r.Context(), "flash", "You've been logged out successfully!")
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 

@@ -53,6 +53,7 @@ func (app *application) requireAuthentication(next http.Handler) http.Handler {
 		// If user is not authenticated, redirect to signin page
 		// And return so no otherr middlewares are ran
 		if !app.isAuthenticated(r) {
+			app.sessionManager.Put(r.Context(), "requestedURL", r.URL.Path)
 			app.sessionManager.Put(r.Context(), "flash", "Please login first")
 			http.Redirect(w, r, "/user/signin", http.StatusSeeOther)
 			return
