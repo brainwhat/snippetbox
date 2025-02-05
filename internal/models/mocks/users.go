@@ -1,6 +1,10 @@
 package mocks
 
-import "snippetbox.brainwhat/internal/models"
+import (
+	"time"
+
+	"snippetbox.brainwhat/internal/models"
+)
 
 // These are here for testing purposes
 
@@ -29,5 +33,17 @@ func (m *MockUserModel) Exists(id int) (bool, error) {
 		return true, nil
 	default:
 		return false, nil
+	}
+}
+func (m *MockUserModel) Get(id int) (*models.User, error) {
+	if id == 1 {
+		u := &models.User{
+			Name:    "Ivan Ivanov",
+			Email:   "example@mail.com",
+			Created: time.Now(),
+		}
+		return u, nil
+	} else {
+		return nil, models.ErrNoRecord
 	}
 }

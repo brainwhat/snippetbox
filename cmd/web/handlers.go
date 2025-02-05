@@ -179,6 +179,7 @@ func (app *application) userSignIn(w http.ResponseWriter, r *http.Request) {
 	data.Form = UserSignInForm{}
 	app.render(w, http.StatusOK, "signin.tmpl", data)
 }
+
 func (app *application) userSignInPost(w http.ResponseWriter, r *http.Request) {
 	var form UserSignInForm
 
@@ -236,4 +237,23 @@ func (app *application) userLogOutPost(w http.ResponseWriter, r *http.Request) {
 	app.sessionManager.Put(r.Context(), "flash", "User logged out succesfully")
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func (app *application) accountView(w http.ResponseWriter, r *http.Request) {
+	id := app.sessionManager.GetInt(r.Context(), "authenticatedUserID")
+
+	u, err := app.users.Get(id)
+	if err != nil {
+		if errors.Is(err, models.ErrNoRecord) {
+			http.Redirect(w, r, "user/signin", http.StatusSeeOther)
+		} else {
+			app.serverError(w, err)
+		}
+	}
+
+	data := app.newTemplateData(r)
+	data.User = u
+
+	app.render(w, http.StatusOK, "account.tmpl", data)
+
 }

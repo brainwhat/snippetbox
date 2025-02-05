@@ -35,6 +35,7 @@ func (app *application) routes() http.Handler {
 
 	protected := dymanic.Append(app.requireAuthentication)
 	// Protected routes
+	router.Handler(http.MethodGet, "/user/account", protected.ThenFunc(app.accountView))
 	router.Handler(http.MethodPost, "/user/logout", protected.ThenFunc(app.userLogOutPost))
 	router.Handler(http.MethodGet, "/snippet/create", protected.ThenFunc(app.snippetCreate))
 	router.Handler(http.MethodPost, "/snippet/create", protected.ThenFunc(app.snippetCreatePost))
