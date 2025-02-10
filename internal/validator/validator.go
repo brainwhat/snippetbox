@@ -64,3 +64,7 @@ var EmailRX = regexp.MustCompile(`^[a-zA-Z0-9.!#$%&'*+/=?^_` + "`" + `{|}~-]+@[a
 func MatchesRX(value string, rx *regexp.Regexp) bool {
 	return rx.MatchString(value)
 }
+
+func MatchesString(val1 string, val2 string) bool {
+	return val1 == val2
+}

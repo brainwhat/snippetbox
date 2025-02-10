@@ -35,6 +35,7 @@ func (m *MockUserModel) Exists(id int) (bool, error) {
 		return false, nil
 	}
 }
+
 func (m *MockUserModel) Get(id int) (*models.User, error) {
 	if id == 1 {
 		u := &models.User{
@@ -46,4 +47,14 @@ func (m *MockUserModel) Get(id int) (*models.User, error) {
 	} else {
 		return nil, models.ErrNoRecord
 	}
+}
+
+func (m *MockUserModel) UpdatePassword(id int, curPass, newPass string) error {
+	if id == 1 {
+		if curPass != "pa$$word" {
+			return models.ErrInvalidCredentials
+		}
+		return nil
+	}
+	return models.ErrNoRecord
 }

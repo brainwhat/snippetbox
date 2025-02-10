@@ -257,3 +257,55 @@ func (app *application) accountView(w http.ResponseWriter, r *http.Request) {
 	app.render(w, http.StatusOK, "account.tmpl", data)
 
 }
+
+type accountPasswordUpdateForm struct {
+	CurPass             string `form:"curPass"`
+	NewPass             string `form:"newPass"`
+	NewPassConfirm      string `form:"newPassConfirm"`
+	validator.Validator `form:"-"`
+}
+
+func (app *application) accountPasswordUpdate(w http.ResponseWriter, r *http.Request) {
+	data := app.newTemplateData(r)
+	data.Form = accountPasswordUpdateForm{}
+	app.render(w, http.StatusOK, "passwordChange.tmpl", data)
+}
+
+func (app *application) accountPasswordUpdatePost(w http.ResponseWriter, r *http.Request) {
+	var form accountPasswordUpdateForm
+
+	err := app.decodePostForm(r, &form)
+	if err != nil {
+		app.userError(w, http.StatusBadRequest)
+		return
+	}
+
+	form.CheckField(validator.NotBlank(form.CurPass), "curPass", "This field cannot be blank")
+	form.CheckField(validator.NotBlank(form.NewPass), "newPass", "This field cannot be blank")
+	form.CheckField(validator.NotBlank(form.NewPassConfirm), "nePassConfirm", "This field cannot be blank")
+
+	form.CheckField(validator.MinChars(form.NewPass, 8), "newPass", "New password must be 8+ characters long")
+
+	form.CheckField(validator.MatchesString(form.NewPass, form.NewPassConfirm), "newPass", "Passwords don't match")
+	form.CheckField(validator.MatchesString(form.NewPass, form.NewPassConfirm), "newPassConfirm", "Passwords don't match")
+
+	if !form.Valid() {
+		app.infoLog.Print("Validator erro")
+		data := app.newTemplateData(r)
+		data.Form = form
+		app.render(w, http.StatusUnprocessableEntity, "passwordChange.tmpl", data)
+		return
+	}
+
+	id := app.sessionManager.GetInt(r.Context(), "authenticatedUserID")
+
+	err = app.users.UpdatePassword(id, form.CurPass, form.NewPass)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	app.sessionManager.Put(r.Context(), "flash", "Password updated successfully")
+
+	http.Redirect(w, r, "/user/account", http.StatusSeeOther)
+}
